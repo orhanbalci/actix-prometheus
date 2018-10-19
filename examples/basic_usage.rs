@@ -1,11 +1,9 @@
 extern crate actix;
-extern crate actix_web;
 extern crate actix_prometheus;
+extern crate actix_web;
 
-
-use actix_web::{server, App};
 use actix_prometheus::PrometheusMiddleware;
-
+use actix_web::{server, App};
 
 fn main() {
     println!("Running prometheus example");

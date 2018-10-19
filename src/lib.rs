@@ -4,59 +4,51 @@ extern crate prometheus;
 #[macro_use]
 extern crate lazy_static;
 
-use actix_web::middleware::Middleware;
-use actix_web::middleware::Response;
-use actix_web::HttpRequest;
-use actix_web::HttpResponse;
-use actix_web::middleware::Started;
-use actix_web::middleware::Finished;
-use actix_web::Result;
+use actix_web::middleware::{Finished, Middleware, Response, Started};
+use actix_web::{HttpRequest, HttpResponse, Result};
 
-use prometheus::{IntCounter, Counter};
-use prometheus::core::Collector;
+use prometheus::{Counter, IntCounter};
 
-use std::sync::Mutex;
-use std::sync::Arc;
 use std::collections::HashMap;
-
+use std::sync::Mutex;
 
 lazy_static!{
 static ref Collectors : Mutex<HashMap<&'static str, Box<IntCounter>>> = {
-        let mut m = HashMap::new();
-        //m.insert("test_metric", Arc::from(register_int_counter!("hit_count", "hit count help").unwrap()));
+        let m = HashMap::new();
         Mutex::from(m)
     };
 }
 
 pub struct PrometheusMiddleware;
 
-impl Default for PrometheusMiddleware{
+impl Default for PrometheusMiddleware {
     fn default() -> Self {
-        PrometheusMiddleware{}
+        PrometheusMiddleware {}
     }
 }
 
-impl PrometheusMiddleware{
-    pub fn register_int_counter(&self ){
-        Collectors.lock().unwrap().insert("hit_count",Box::from(register_int_counter!("hit_count", "hit count help").unwrap()));
+impl PrometheusMiddleware {
+    pub fn register_int_counter(&self) {
+        Collectors.lock().unwrap().insert(
+            "hit_count",
+            Box::from(register_int_counter!("hit_count", "hit count help").unwrap()),
+        );
     }
 }
 
-
-impl<S> Middleware<S> for PrometheusMiddleware{
-
-    fn start(&self, req: &HttpRequest<S>) -> Result<Started>{
-        println!("protheus middleware started");
+impl<S> Middleware<S> for PrometheusMiddleware {
+    fn start(&self, req: &HttpRequest<S>) -> Result<Started> {
+        println!("Prometheus middleware started");
         Ok(Started::Done)
     }
 
-    fn response(&self, req: &HttpRequest<S>, resp: HttpResponse) -> Result<Response>{
-        println!("protheus middleware response");
+    fn response(&self, req: &HttpRequest<S>, resp: HttpResponse) -> Result<Response> {
+        println!("Prometheus middleware response");
         Ok(Response::Done(resp))
     }
 
-    fn finish(&self, req: &HttpRequest<S>, resp: &HttpResponse) -> Finished{
-        println!("protheus middleware finished");
+    fn finish(&self, req: &HttpRequest<S>, resp: &HttpResponse) -> Finished {
+        println!("Prometheus middleware finished");
         Finished::Done
     }
 }
