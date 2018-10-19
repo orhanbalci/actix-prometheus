@@ -1,0 +1,10 @@
+[package]
+name = "actix-prometheus"
+version = "0.1.0"
+authors = ["orhanbalci <orhanbalci@gmail.com>"]
+
+[dependencies]
+actix-web = "0.7.13"
+prometheus = "0.4.2"
+lazy_static = "1.1.0"
+actix = "*"

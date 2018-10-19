@@ -1,2 +1,2 @@
 # actix-prometheus
-Prometheus metric aggregation middleware
+Prometheus metric aggregation middleware for actix web framework
