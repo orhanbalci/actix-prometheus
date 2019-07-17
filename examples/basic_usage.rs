@@ -14,7 +14,8 @@ fn main() {
     HttpServer::new(|| {
         App::new().wrap(PrometheusTransform).service(
             web::resource("/test").route(web::get().to(|| HttpResponse::Ok().body("Well done!"))),
-        )
+            
+        ).route("/metrics", web::get().to(actix_prometheus::metric_export))
     })
     .bind("127.0.0.1:8088")
     .unwrap()

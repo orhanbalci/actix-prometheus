@@ -6,12 +6,11 @@ extern crate lazy_static;
 
 extern crate futures;
 
-use actix_web::{dev::Service, dev::Transform};
-use actix_web::{dev::ServiceRequest, dev::ServiceResponse, Error};
+use actix_web::{dev::{Service,Transform,ServiceRequest,ServiceResponse}, Error, Responder};
 use futures::future::{ok, FutureResult};
 use futures::{Future, Poll};
 
-use prometheus::{Counter, IntCounter, IntCounterVec};
+use prometheus::{Counter, IntCounter, IntCounterVec, Histogram, TextEncoder, Encoder, gather};
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -25,6 +24,10 @@ lazy_static! {
         let m = HashMap::new();
         Mutex::from(m)
     };
+
+    static ref HISTOGRAMS : Mutex<HashMap<&'static str, Box<Histogram>>> = {
+        Mutex::from(HashMap::new())
+    };
 }
 
 pub fn register_default_counters() {
@@ -36,6 +39,51 @@ pub fn register_default_counters() {
         "request_count",
         Box::from(register_int_counter_vec!(opts, &["status_code", "http_method"]).unwrap()),
     );
+
+    let  histogram_opts = histogram_opts!(
+        "request_duration_seconds",
+        "HTTP request latencies in seconds."
+    );
+
+    HISTOGRAMS.lock().unwrap().insert(
+        "request_duration_seconds",
+        Box::from(register_histogram!(histogram_opts).unwrap()),
+    );
+
+    let response_size_opts = histogram_opts!(
+        "response_size_bytes",
+        "HTTP response size in bytes."
+    );
+
+    HISTOGRAMS.lock().unwrap().insert(
+        "response_size_bytes",
+        Box::from(register_histogram!(response_size_opts).unwrap()),
+    );
+
+    let request_size_opts = histogram_opts!(
+        "request_size_bytes",
+        "HTTP request size in bytes."
+    );
+
+    HISTOGRAMS.lock().unwrap().insert(
+        "request_size_bytes",
+        Box::from(register_histogram!(request_size_opts).unwrap()),
+    );
+}
+
+/// An actix responder to export gathered metrics
+/// This is usefull for pull based prometheus reporting
+/// Just register this responder for /metrics path
+/// ```
+/// App::new()
+///     .route("/metrics", web::get().to(actix_prometheus::metric_export));
+/// ```
+pub fn metric_export() -> impl Responder {
+    let mut buffer = Vec::new();
+    let encoder = TextEncoder::new();
+    let metric_families = gather();
+    encoder.encode(&metric_families, &mut buffer).unwrap();
+    String::from_utf8(buffer.clone()).unwrap()
 }
 
 pub struct PrometheusTransform;
