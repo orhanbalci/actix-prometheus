@@ -74,7 +74,7 @@ pub fn register_default_counters() {
 /// An actix responder to export gathered metrics
 /// This is usefull for pull based prometheus reporting
 /// Just register this responder for /metrics path
-/// ```
+/// ```rust,ignore
 /// App::new()
 ///     .route("/metrics", web::get().to(actix_prometheus::metric_export));
 /// ```
