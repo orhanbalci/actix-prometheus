@@ -16,4 +16,8 @@ services:
             - "3000:3000"       
        
         
-    
+    service:
+        image: orhanbalci/actix-example
+        hostname: service
+        ports: 
+            - "8088:8088" 

@@ -17,7 +17,7 @@ fn main() {
             
         ).route("/metrics", web::get().to(actix_prometheus::metric_export))
     })
-    .bind("127.0.0.1:8088")
+    .bind("0.0.0.0:8088")
     .unwrap()
     .run()
     .unwrap()

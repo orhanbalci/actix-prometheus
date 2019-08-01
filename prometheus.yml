@@ -7,4 +7,4 @@ global:
 scrape_configs:
   - job_name: 'scrape-actix-service'
     static_configs:
-      - targets: ['localhost:8088']
+      - targets: ['service:8088']

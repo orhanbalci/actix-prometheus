@@ -150,7 +150,7 @@ where
                 .get_metric_with_label_values(&[
                     res.status().as_str(),
                     res.request().method().as_str(),
-                ]);
+                ]).unwrap().inc();
             Ok(res)
         }))
     }
