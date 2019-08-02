@@ -6,11 +6,16 @@ extern crate lazy_static;
 
 extern crate futures;
 
-use actix_web::{dev::{Service,Transform,ServiceRequest,ServiceResponse}, Error, Responder};
+use actix_web::{
+    dev::{Service, ServiceRequest, ServiceResponse, Transform},
+    Error, Responder,
+};
 use futures::future::{ok, FutureResult};
 use futures::{Future, Poll};
 
-use prometheus::{Counter, IntCounter, IntCounterVec, Histogram, TextEncoder, Encoder, gather};
+use prometheus::{
+    gather, Counter, Encoder, Histogram, HistogramVec, IntCounter, IntCounterVec, TextEncoder,
+};
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -20,16 +25,18 @@ lazy_static! {
         let m = HashMap::new();
         Mutex::from(m)
     };
-    static ref INT_VEC_COUNTERS: Mutex<HashMap<&'static str, Box<IntCounterVec>>> = {
-        let m = HashMap::new();
-        Mutex::from(m)
-    };
-
-    static ref HISTOGRAMS : Mutex<HashMap<&'static str, Box<Histogram>>> = {
-        Mutex::from(HashMap::new())
-    };
+    static ref INT_VEC_COUNTERS: Mutex<HashMap<&'static str, Box<IntCounterVec>>> =
+        { Mutex::from(HashMap::new()) };
+    static ref HISTOGRAMS: Mutex<HashMap<&'static str, Box<Histogram>>> =
+        { Mutex::from(HashMap::new()) };
+    static ref HISTOGRAM_VECS: Mutex<HashMap<&'static str, Box<HistogramVec>>> =
+        { Mutex::from(HashMap::new()) };
 }
 
+/// registers default counters request_count,
+/// request_duration_seconds, response_size_bytes and
+/// request_size_bytes. This functions should be called before
+/// registering prometheus middleware
 pub fn register_default_counters() {
     let opts = opts!(
         "request_count",
@@ -40,7 +47,7 @@ pub fn register_default_counters() {
         Box::from(register_int_counter_vec!(opts, &["status_code", "http_method"]).unwrap()),
     );
 
-    let  histogram_opts = histogram_opts!(
+    let histogram_opts = histogram_opts!(
         "request_duration_seconds",
         "HTTP request latencies in seconds."
     );
@@ -50,20 +57,14 @@ pub fn register_default_counters() {
         Box::from(register_histogram!(histogram_opts).unwrap()),
     );
 
-    let response_size_opts = histogram_opts!(
-        "response_size_bytes",
-        "HTTP response size in bytes."
-    );
+    let response_size_opts = histogram_opts!("response_size_bytes", "HTTP response size in bytes.");
 
     HISTOGRAMS.lock().unwrap().insert(
         "response_size_bytes",
         Box::from(register_histogram!(response_size_opts).unwrap()),
     );
 
-    let request_size_opts = histogram_opts!(
-        "request_size_bytes",
-        "HTTP request size in bytes."
-    );
+    let request_size_opts = histogram_opts!("request_size_bytes", "HTTP request size in bytes.");
 
     HISTOGRAMS.lock().unwrap().insert(
         "request_size_bytes",
@@ -140,6 +141,13 @@ where
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
         println!("Prometheus middleware started");
 
+        HISTOGRAMS
+            .lock()
+            .unwrap()
+            .get("request_size_bytes")
+            .unwrap()
+            .observe(std::mem::size_of_val(&req) as f64);
+
         Box::new(self.service.call(req).and_then(|res| {
             println!("Prometheus middleware response");
             INT_VEC_COUNTERS
@@ -150,7 +158,17 @@ where
                 .get_metric_with_label_values(&[
                     res.status().as_str(),
                     res.request().method().as_str(),
-                ]).unwrap().inc();
+                ])
+                .unwrap()
+                .inc();
+
+            HISTOGRAMS
+                .lock()
+                .unwrap()
+                .get("response_size_bytes")
+                .unwrap()
+                .observe(std::mem::size_of_val(&res) as f64);
+
             Ok(res)
         }))
     }
